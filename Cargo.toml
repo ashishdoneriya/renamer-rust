@@ -1,0 +1,18 @@
+[package]
+name = "renamer"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.deb]
+maintainer = "Ashish Doneriya <ashishdoneriya@gmail.com>"
+copyright = "2023, Ashish Doneriya <ashishdoneriya@gmail.com>"
+
+[profile.release]
+opt-level = 3
+
+[dependencies]
+chrono = "0.4"
+clap = { version = "4.3.19", features = ["derive"] }
+kamadak-exif = "0.5.5"
+filetime = "0.2"
+regex = "1.9.1"
