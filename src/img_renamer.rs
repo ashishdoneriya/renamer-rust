@@ -2,7 +2,6 @@ use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use filetime::FileTime;
 use regex::Regex;
 
 use crate::arguments::Args;
@@ -53,7 +52,7 @@ fn get_image_files_in_directory(source_dir: &String) -> Result<Vec<PathBuf>, Box
 
 fn generate_new_path(file_path: &Path, args: &Args, regex_list: &Vec<Regex>) -> Result<Option<PathBuf>, Box<dyn Error>> {
 	if args.use_image_properties {
-		return use_metadata_to_generate_new_path(file_path, args);
+		return use_metadata_to_generate_new_path(file_path);
 	}
 	if args.use_last_modified {
 		return fileutils::use_last_modified_to_generate_new_path(file_path);
@@ -64,7 +63,7 @@ fn generate_new_path(file_path: &Path, args: &Args, regex_list: &Vec<Regex>) -> 
 	Ok(None)
 }
 
-fn use_metadata_to_generate_new_path(file_path: &Path, args: &Args) -> Result<Option<PathBuf>, Box<dyn Error>> {
+fn use_metadata_to_generate_new_path(file_path: &Path) -> Result<Option<PathBuf>, Box<dyn Error>> {
 	return match fileutils::get_image_created_on_date(file_path) {
 		Ok(Some(created_on)) => {
 			let extension_opt = fileutils::get_file_extension(file_path);
@@ -80,15 +79,6 @@ fn use_metadata_to_generate_new_path(file_path: &Path, args: &Args) -> Result<Op
 			let mut new_path = file_path.to_path_buf();
 
 			new_path.set_file_name(new_name);
-			if args.change_last_modified && ! fileutils::file_exists(&new_path) {
-				let system_time: std::time::SystemTime = created_on.clone().into(); // Convert to SystemTime
-				let file_time = FileTime::from(system_time); // Convert to FileTime
-
-				filetime::set_file_mtime(file_path, file_time)
-					.unwrap_or_else(|err| {
-						eprintln!("Couldn't change modified time of a file, err - {:?}", err)
-					});
-			}
 			Ok(Some(new_path))
 		}
 		_ => {

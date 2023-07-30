@@ -16,3 +16,4 @@ clap = { version = "4.3.19", features = ["derive"] }
 kamadak-exif = "0.5.5"
 filetime = "0.2"
 regex = "1.9.1"
+time = "0.3.23"

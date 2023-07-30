@@ -17,11 +17,9 @@ pub struct Args {
 	#[arg(long)]
 	pub use_image_properties: bool,
 	#[arg(long)]
-	pub change_last_modified: bool,
-	#[arg(long)]
 	pub move_files: bool,
 	#[arg(long)]
-	pub delete_duplicates: bool,
+	pub update_last_modified: bool
 }
 
 #[derive(Debug)]
@@ -37,8 +35,13 @@ impl fmt::Display for InvalidArgumentsError {
 
 pub fn parse() -> Result<Args, InvalidArgumentsError> {
 	let args = Args::parse();
-	if !args.rename_videos && !args.rename_images && !args.move_files {
-		return Err(InvalidArgumentsError { message: "Kindly use at least --rename-videos or --rename-images or --move-files".to_string() });
+	if !args.rename_videos && !args.rename_images && !args.move_files && !args.update_last_modified {
+		return Err(InvalidArgumentsError { message: "Kindly use at least one argument from below\
+			\n\t--rename-videos\
+			\n\t--rename-images\
+			\n\t--move-files\
+			\n\t--update-last-modified\
+			\nUse --help for more options".to_string() });
 	}
 	let mut count = 0;
 	if args.use_last_modified {
@@ -55,7 +58,7 @@ pub fn parse() -> Result<Args, InvalidArgumentsError> {
 		}
 	}
 
-	if args.use_last_modified {
+	if args.use_image_properties {
 		count += 1;
 	}
 

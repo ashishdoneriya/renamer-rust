@@ -2,8 +2,9 @@ use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone};
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use exif::{In, Tag};
+use filetime::FileTime;
 use regex::Regex;
 
 pub fn file_exists(file_path: &Path) -> bool {
@@ -109,10 +110,12 @@ fn get_date_time_formatted_name(file_path: &Path, regex_list: &Vec<Regex>) -> Re
 	return Ok(None);
 }
 
-pub fn move_files(src_dir: &String) -> Result<(),  Box<dyn Error>>{
+pub fn move_files(src_dir: &String) -> Result<(), Box<dyn Error>> {
 	for entry in fs::read_dir(src_dir)? {
 		let file_path = entry?.path();
-		if file_path.is_file() && has_valid_extension(&file_path) {}
+		if !file_path.is_file() || !has_valid_extension(&file_path) {
+			continue;
+		}
 		let file_name_without_ext_op = get_file_name_without_extension(&file_path);
 		if file_name_without_ext_op.is_none() {
 			continue;
@@ -141,6 +144,64 @@ pub fn move_files(src_dir: &String) -> Result<(),  Box<dyn Error>>{
 		move_file(&file_path, new_path)?
 	}
 	Ok(())
+}
+
+pub fn update_last_modified(src_dir: &String) -> Result<(), Box<dyn Error>> {
+	for entry in fs::read_dir(src_dir)? {
+		let file_path = entry?.path();
+		if !file_path.is_file() || !has_valid_extension(&file_path) {
+			eprintln!("Invalid Extension {:?}", file_path);
+			continue;
+		}
+		let file_name_without_ext_op = get_file_name_without_extension(&file_path);
+		if file_name_without_ext_op.is_none() {
+			eprintln!("Invalid file_name_without_ext_op {:?}", file_path);
+			continue;
+		}
+		let file_name_without_ext = file_name_without_ext_op.unwrap();
+		let regex = Regex::new(r"(\d{4})-(\d{2})-(\d{2}) (\d{2}).(\d{2}).(\d{2})")?;
+		let capture_opt = regex.captures(&file_name_without_ext);
+		if capture_opt.is_none() {
+			eprintln!("Pattern not matched {:?}", file_path);
+			continue;
+		}
+		let token = capture_opt.unwrap();
+		let year: i32 = token[1].to_string().parse().unwrap();
+		let month: u32 = token[2].to_string().parse().unwrap();
+		let day: u32 = token[3].to_string().parse().unwrap();
+		let date_opt = NaiveDate::from_ymd_opt(year, month, day);
+		if date_opt.is_none() {
+			eprintln!("date not matched {:?}", file_path);
+			continue;
+		}
+		let hour: u32 = token[4].to_string().parse().unwrap();
+		let minute: u32 = token[5].to_string().parse().unwrap();
+		let second: u32 = token[6].to_string().parse().unwrap();
+
+		// Create a specific time
+		let time_opt = NaiveTime::from_hms_opt(hour, minute, second);
+		if time_opt.is_none() {
+			eprintln!("time not matched {:?}", file_path);
+			continue;
+		}
+		// Combine the date and time to create a datetime
+		let datetime = NaiveDateTime::new(date_opt.unwrap(), time_opt.unwrap());
+		change_last_modified_time(&file_path, datetime);
+	}
+	Ok(())
+}
+
+fn change_last_modified_time(file_path: &Path, datetime: NaiveDateTime) {
+	// Convert the NaiveDateTime to a Unix timestamp with nanoseconds set to 0
+	let unix_timestamp = datetime.timestamp() - 19800;
+	let nanoseconds = 0;
+	let file_time = FileTime::from_unix_time(unix_timestamp, nanoseconds);
+
+	// Set the new modification time for the file
+	match filetime::set_file_mtime(file_path, file_time) {
+		Ok(_) => println!("Last modified time of the file has been changed."),
+		Err(err) => eprintln!("Error changing last modified time: {}", err),
+	}
 }
 
 fn get_parent_dir(file_path: &Path) -> Option<&str> {
